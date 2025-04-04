@@ -41,7 +41,7 @@ export default function RootLayout(props: { children: React.ReactNode }) {
                 <Header />
 
                 {/* Main Content */}
-                <Box component="main" sx={{ flex: 1, p: 4, overflowY: "auto" }}>
+                <Box component="main" sx={{ flex: 1, p: 8, overflowY: "auto" }}>
                   {props.children}
                 </Box>
               </Box>

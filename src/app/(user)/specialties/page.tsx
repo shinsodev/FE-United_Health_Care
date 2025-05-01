@@ -22,8 +22,7 @@ import {
   Delete as DeleteIcon,
   FilterList as FilterListIcon,
 } from "@mui/icons-material";
-import { specialtyService } from "@/services/specialtyService";
-import { Specialty, SpecialtyFormData } from "@/types/specialty";
+import { Specialty, SpecialtyFormData } from "@/types/backend";
 
 export default function SpecialtiesPage() {
   const [specialties, setSpecialties] = useState<Specialty[]>([]);
@@ -43,15 +42,27 @@ export default function SpecialtiesPage() {
   const fetchSpecialties = async () => {
     setLoading(true);
     try {
-      const data = await specialtyService.getAll();
-      setSpecialties(data || []);
+      const res = await fetch("/api/specialties", {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+      });
+      if (!res.ok) {
+        throw new Error("Cannot fetch specialties");
+      }
+      const data = await res.json();
+      const specialtiesData = Array.isArray(data) ? data : data.data || [];
+      if (!Array.isArray(specialtiesData)) {
+        throw new Error("Data is not an array");
+      }
+      setSpecialties(specialtiesData);
     } catch (error) {
-      console.error("Error fetching specialties:", error);
+      console.error("Error:", error);
       setSnackbar({
         open: true,
         message: "Failed to fetch specialties",
         severity: "error",
       });
+      setSpecialties([]);
     } finally {
       setLoading(false);
     }
@@ -81,28 +92,45 @@ export default function SpecialtiesPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      if (editingId) {
-        await specialtyService.update(editingId, formData);
-        setSnackbar({
-          open: true,
-          message: "Specialty updated successfully",
-          severity: "success",
-        });
-      } else {
-        await specialtyService.create(formData);
-        setSnackbar({
-          open: true,
-          message: "Specialty created successfully",
-          severity: "success",
-        });
+      const url = editingId
+        ? `/api/specialties/${editingId}`
+        : "/api/specialties";
+      const method = editingId ? "PUT" : "POST";
+      const res = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formData),
+      });
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(
+          errorData.error ||
+            `Cannot ${editingId ? "update" : "create"} specialty`
+        );
       }
+      const responseData = await res.json();
+      setSnackbar({
+        open: true,
+        message:
+          responseData.message ||
+          `Specialty has been ${
+            editingId ? "updated" : "created"
+          } successfully`,
+        severity: "success",
+      });
       handleCloseModal();
       fetchSpecialties();
     } catch (error) {
-      console.error("Error saving specialty:", error);
+      console.error(
+        `Error when ${editingId ? "updating" : "creating"} specialty:`,
+        error
+      );
       setSnackbar({
         open: true,
-        message: "Failed to save specialty",
+        message:
+          error instanceof Error
+            ? error.message
+            : `Cannot ${editingId ? "update" : "create"} specialty`,
         severity: "error",
       });
     }
@@ -111,18 +139,28 @@ export default function SpecialtiesPage() {
   const handleDelete = async (id: number) => {
     if (window.confirm("Are you sure you want to delete this specialty?")) {
       try {
-        await specialtyService.delete(id);
+        const res = await fetch(`/api/specialties/${id}`, {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+        });
+        if (!res.ok) {
+          const errorData = await res.json().catch(() => ({}));
+          throw new Error(errorData.error || "Cannot delete specialty");
+        }
+        const responseData = await res.json();
         setSnackbar({
           open: true,
-          message: "Specialty deleted successfully",
+          message:
+            responseData.message || "Specialty has been deleted successfully",
           severity: "success",
         });
         fetchSpecialties();
       } catch (error) {
-        console.error("Error deleting specialty:", error);
+        console.error("Error when deleting specialty:", error);
         setSnackbar({
           open: true,
-          message: "Failed to delete specialty",
+          message:
+            error instanceof Error ? error.message : "Cannot delete specialty",
           severity: "error",
         });
       }
@@ -147,7 +185,7 @@ export default function SpecialtiesPage() {
       }}
     >
       <Typography variant="h4" sx={{ fontWeight: "bold", mb: 3 }}>
-        Specialties Management
+        Specialty Management
       </Typography>
 
       <Box
@@ -187,6 +225,7 @@ export default function SpecialtiesPage() {
             <TableCell>Code</TableCell>
             <TableCell>Name</TableCell>
             <TableCell>Created At</TableCell>
+            {/* <TableCell>Doctors</TableCell> */}
             <TableCell>Actions</TableCell>
           </TableRow>
         </TableHead>
@@ -198,6 +237,15 @@ export default function SpecialtiesPage() {
               <TableCell>
                 {new Date(specialty.createdAt!).toLocaleDateString()}
               </TableCell>
+
+              {/* <TableCell>
+                {specialty.doctors && specialty.doctors.length > 0
+                  ? specialty.doctors
+                      .map((doctor) => doctor.fullName)
+                      .join(", ")
+                  : "No doctors"}
+              </TableCell> */}
+
               <TableCell>
                 <IconButton
                   onClick={() => handleOpenModal(specialty)}
@@ -226,7 +274,7 @@ export default function SpecialtiesPage() {
         }}
       >
         <Typography variant="body2">
-          {specialties.length} results found. Showing page 1 of 1
+          Found {specialties.length} results. Displaying page 1/1
         </Typography>
         <Box sx={{ display: "flex", gap: 1 }}>
           <Button variant="outlined" size="small">
@@ -270,8 +318,7 @@ export default function SpecialtiesPage() {
               onChange={(e) =>
                 setFormData({ ...formData, code: e.target.value })
               }
-              margin="normal"
-              required
+              sx={{ mb: 2 }}
             />
             <TextField
               fullWidth
@@ -280,27 +327,28 @@ export default function SpecialtiesPage() {
               onChange={(e) =>
                 setFormData({ ...formData, name: e.target.value })
               }
-              margin="normal"
-              required
+              sx={{ mb: 2 }}
             />
-            <Button
-              variant="contained"
-              fullWidth
-              sx={{ mt: 2, backgroundColor: "#a855f7" }}
-              type="submit"
-            >
-              {editingId ? "Update" : "Create"}
-            </Button>
+            <Box sx={{ display: "flex", justifyContent: "flex-end" }}>
+              <Button variant="contained" type="submit">
+                {editingId ? "Update" : "Create"}
+              </Button>
+            </Box>
           </form>
         </Box>
       </Modal>
 
       <Snackbar
         open={snackbar.open}
-        autoHideDuration={4000}
+        autoHideDuration={6000}
         onClose={() => setSnackbar({ ...snackbar, open: false })}
       >
-        <Alert severity={snackbar.severity}>{snackbar.message}</Alert>
+        <Alert
+          onClose={() => setSnackbar({ ...snackbar, open: false })}
+          severity={snackbar.severity}
+        >
+          {snackbar.message}
+        </Alert>
       </Snackbar>
     </Box>
   );

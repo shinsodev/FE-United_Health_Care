@@ -13,6 +13,7 @@ import HomeIcon from "@mui/icons-material/Home";
 import AssignmentIcon from "@mui/icons-material/Assignment";
 import AccountCircleIcon from "@mui/icons-material/AccountCircle";
 import ExitToAppIcon from "@mui/icons-material/ExitToApp";
+import MedicationLiquidIcon from "@mui/icons-material/MedicationLiquid";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -22,6 +23,11 @@ const Sidebar = () => {
   // Item config for cleaner mapping
   const navItems = [
     { text: "Home", icon: <HomeIcon />, path: "/" },
+    {
+      text: "Specialties",
+      icon: <MedicationLiquidIcon />,
+      path: "/specialties",
+    },
     { text: "Appointment", icon: <AssignmentIcon />, path: "/appointment" },
     { text: "Profile", icon: <AccountCircleIcon />, path: "/profile" },
     { text: "Logout", icon: <ExitToAppIcon />, path: "/logout" },

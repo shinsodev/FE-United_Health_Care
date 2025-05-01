@@ -1,6 +1,7 @@
 import { IUser } from "./next-auth";
 
 export { };
+
 // https://bobbyhadz.com/blog/typescript-make-types-global#declare-global-types-in-typescript
 
 declare global {
@@ -26,4 +27,30 @@ declare global {
         headers?: any;
         nextOption?: any;
     }
+}
+
+// Named exports for module imports
+export interface Doctor {
+  id?: number;
+  createdAt?: string;
+  createdBy?: string;
+  updatedAt?: string;
+  updatedBy?: string;
+  fullName: string;
+}
+
+export interface Specialty {
+  id?: number;
+  createdAt?: string;
+  createdBy?: string;
+  updatedAt?: string;
+  updatedBy?: string;
+  name: string;
+  code: string;
+  doctors?: Doctor[];
+}
+
+export interface SpecialtyFormData {
+  name: string;
+  code: string;
 }

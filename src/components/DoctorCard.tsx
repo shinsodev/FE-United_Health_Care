@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 
 import {
   Box,
@@ -7,16 +7,46 @@ import {
   CardContent,
   CardMedia,
   Button,
+  Tooltip,
 } from "@mui/material";
 import EventIcon from "@mui/icons-material/Event";
+
+interface ScheduleInfo {
+  date: string;
+  period: string;
+  startHour: string;
+  endHour: string;
+}
 
 interface DoctorCardProps {
   name: string;
   image: string;
   schedule: string[];
+  scheduleDetails?: ScheduleInfo[]; // Add details for tooltips
 }
 
-const DoctorCard = ({ name, image, schedule }: DoctorCardProps) => {
+const DoctorCard = ({
+  name,
+  image,
+  schedule,
+  scheduleDetails = [],
+}: DoctorCardProps) => {
+  // Format date to a more readable format
+  const formatDate = (dateString: string) => {
+    const options: Intl.DateTimeFormatOptions = {
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    };
+    return new Date(dateString).toLocaleDateString("en-US", options);
+  };
+
+  // Format period for display
+  const formatPeriod = (period: string) => {
+    return period.charAt(0) + period.slice(1).toLowerCase();
+  };
+
   return (
     <Card
       sx={{
@@ -67,10 +97,6 @@ const DoctorCard = ({ name, image, schedule }: DoctorCardProps) => {
             alignItems: "center",
           }}
         >
-          <span style={{ fontSize: "14px", color: "#6c757d" }}>
-            WED - 01/01
-          </span>
-          &nbsp; | &nbsp;
           <EventIcon
             sx={{
               fontSize: "18px",
@@ -88,17 +114,41 @@ const DoctorCard = ({ name, image, schedule }: DoctorCardProps) => {
           }}
         >
           {schedule.map((time, idx) => (
-            <Button
+            <Tooltip
               key={idx}
-              variant="outlined"
-              sx={{
-                textTransform: "none",
-                fontSize: "12px",
-                padding: "5px 10px",
-              }}
+              title={
+                scheduleDetails[idx] ? (
+                  <React.Fragment>
+                    <Typography variant="body2" sx={{ fontWeight: "bold" }}>
+                      {formatDate(scheduleDetails[idx].date)}
+                    </Typography>
+                    <Typography variant="body2">
+                      {formatPeriod(scheduleDetails[idx].period)} session
+                    </Typography>
+                  </React.Fragment>
+                ) : (
+                  "Schedule details not available"
+                )
+              }
+              arrow
+              placement="top"
             >
-              {time}
-            </Button>
+              <Button
+                variant="outlined"
+                sx={{
+                  textTransform: "none",
+                  fontSize: "12px",
+                  padding: "5px 10px",
+                  transition: "all 0.3s",
+                  "&:hover": {
+                    backgroundColor: "#e3f2fd",
+                    borderColor: "#1976d2",
+                  },
+                }}
+              >
+                {time}
+              </Button>
+            </Tooltip>
           ))}
         </Box>
         <Typography

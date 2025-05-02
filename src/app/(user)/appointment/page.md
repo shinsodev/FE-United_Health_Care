@@ -17,29 +17,11 @@ interface DoctorSchedule {
   available: boolean;
 }
 
-interface DoctorInfo {
-  id: number;
-  fullName: string;
-  available: boolean;
-}
-
 interface DoctorData {
   id: number;
   name: string;
   image: string;
   schedules: DoctorSchedule[];
-}
-
-interface DoctorsResponse {
-  status: number;
-  message: string;
-  data: {
-    pageNo: number;
-    pageSize: number;
-    totalPages: number;
-    totalElements: number;
-    items: DoctorInfo[];
-  };
 }
 
 const Appointment = () => {
@@ -50,34 +32,43 @@ const Appointment = () => {
   useEffect(() => {
     const fetchDoctors = async () => {
       try {
-        // First, fetch the list of all doctors
-        const doctorsListResponse = await fetch("/api/doctors");
+        // Generate array of doctor IDs from 1 to 15 (to catch more potential doctors)
+        const doctorIds = Array.from({ length: 15 }, (_, i) => i + 1);
 
-        if (!doctorsListResponse.ok) {
-          throw new Error("Failed to fetch doctors list");
-        }
-
-        const doctorsListData: DoctorsResponse =
-          await doctorsListResponse.json();
-
-        if (doctorsListData.status !== 200 || !doctorsListData.data?.items) {
-          throw new Error("Invalid doctors list data");
-        }
-
-        // Extract the list of doctors
-        const doctorsList = doctorsListData.data.items;
-
-        // Fetch schedules for each doctor
+        // Fetch doctor info and schedules for each doctor ID
         const doctorsWithSchedules = await Promise.all(
-          doctorsList.map(async (doctor) => {
+          doctorIds.map(async (id) => {
             try {
-              // Fetch schedules for this doctor
-              const schedulesResponse = await fetch(
-                `/api/schedules/${doctor.id}`
-              );
+              // First fetch doctor information
+              const doctorResponse = await fetch(`/api/doctors/${id}`);
+
+              if (!doctorResponse.ok) {
+                console.warn(`Doctor with ID ${id} not found`);
+                return null; // Skip if doctor doesn't exist
+              }
+
+              const doctorData = await doctorResponse.json();
+
+              // Skip if no valid doctor data
+              if (doctorData.status !== 200 || !doctorData.data) {
+                console.warn(`Invalid data for doctor ID ${id}`);
+                return null;
+              }
+
+              // Extract doctor information
+              const doctorInfo = {
+                name:
+                  doctorData.data.name ||
+                  doctorData.data.fullName ||
+                  `Doctor ${id}`,
+                image: doctorData.data.image || `/assets/images/doctor.jpg`,
+              };
+
+              // Now fetch schedules for this doctor
+              const schedulesResponse = await fetch(`/api/schedules/${id}`);
 
               if (!schedulesResponse.ok) {
-                console.warn(`No schedules found for doctor ID ${doctor.id}`);
+                console.warn(`No schedules found for doctor ID ${id}`);
                 return null; // Skip doctors with no schedules
               }
 
@@ -86,19 +77,15 @@ const Appointment = () => {
               // Only include doctors with available schedules
               if (schedulesData.data?.items?.length > 0) {
                 return {
-                  id: doctor.id,
-                  name: doctor.fullName,
-                  // Assign a different image based on doctor ID
-                  image: `/assets/images/doctor.jpg`,
+                  id,
+                  name: doctorInfo.name,
+                  image: doctorInfo.image,
                   schedules: schedulesData.data.items,
                 };
               }
               return null;
             } catch (err) {
-              console.warn(
-                `Error fetching schedules for doctor ID ${doctor.id}:`,
-                err
-              );
+              console.warn(`Error fetching data for doctor ID ${id}:`, err);
               return null;
             }
           })

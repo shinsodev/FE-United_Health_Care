@@ -1,6 +1,13 @@
 "use client";
 
-import { Container, Typography, CircularProgress, Box } from "@mui/material";
+import {
+  Container,
+  Typography,
+  CircularProgress,
+  Box,
+  Pagination,
+  Stack,
+} from "@mui/material";
 import React, { useEffect, useState } from "react";
 import DoctorCard from "@/components/DoctorCard";
 import HomeIcon from "@mui/icons-material/Home";
@@ -46,80 +53,102 @@ const Appointment = () => {
   const [doctors, setDoctors] = useState<DoctorData[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalDoctors, setTotalDoctors] = useState(0);
+  const pageSize = 10;
 
-  useEffect(() => {
-    const fetchDoctors = async () => {
-      try {
-        // First, fetch the list of all doctors
-        const doctorsListResponse = await fetch("/api/doctors");
+  // Fetch doctors for current page
+  const fetchDoctorsForPage = async (page: number) => {
+    setLoading(true);
+    try {
+      // Fetch doctors for the current page
+      const doctorsListResponse = await fetch(
+        `/api/doctors?page=${page}&size=${pageSize}`
+      );
 
-        if (!doctorsListResponse.ok) {
-          throw new Error("Failed to fetch doctors list");
-        }
-
-        const doctorsListData: DoctorsResponse =
-          await doctorsListResponse.json();
-
-        if (doctorsListData.status !== 200 || !doctorsListData.data?.items) {
-          throw new Error("Invalid doctors list data");
-        }
-
-        // Extract the list of doctors
-        const doctorsList = doctorsListData.data.items;
-
-        // Fetch schedules for each doctor
-        const doctorsWithSchedules = await Promise.all(
-          doctorsList.map(async (doctor) => {
-            try {
-              // Fetch schedules for this doctor
-              const schedulesResponse = await fetch(
-                `/api/schedules/${doctor.id}`
-              );
-
-              if (!schedulesResponse.ok) {
-                console.warn(`No schedules found for doctor ID ${doctor.id}`);
-                return null; // Skip doctors with no schedules
-              }
-
-              const schedulesData = await schedulesResponse.json();
-
-              // Only include doctors with available schedules
-              if (schedulesData.data?.items?.length > 0) {
-                return {
-                  id: doctor.id,
-                  name: doctor.fullName,
-                  // Assign a different image based on doctor ID
-                  image: `/assets/images/doctor.jpg`,
-                  schedules: schedulesData.data.items,
-                };
-              }
-              return null;
-            } catch (err) {
-              console.warn(
-                `Error fetching schedules for doctor ID ${doctor.id}:`,
-                err
-              );
-              return null;
-            }
-          })
-        );
-
-        // Filter out null values (doctors with no schedules or errors)
-        const validDoctors = doctorsWithSchedules.filter(
-          (doctor): doctor is DoctorData => doctor !== null
-        );
-
-        setDoctors(validDoctors);
-      } catch (err) {
-        console.error("Error fetching data:", err);
-        setError("Failed to load doctor schedules. Please try again later.");
-      } finally {
-        setLoading(false);
+      if (!doctorsListResponse.ok) {
+        throw new Error("Failed to fetch doctors list");
       }
-    };
 
-    fetchDoctors();
-  }, []);
+      const doctorsListData: DoctorsResponse = await doctorsListResponse.json();
+
+      if (doctorsListData.status !== 200 || !doctorsListData.data?.items) {
+        throw new Error("Invalid doctors list data");
+      }
+
+      // Update pagination information
+      setTotalPages(doctorsListData.data.totalPages);
+      setTotalDoctors(doctorsListData.data.totalElements);
+
+      // Extract the list of doctors for this page
+      const doctorsList = doctorsListData.data.items;
+
+      // Fetch schedules for each doctor on this page
+      const doctorsWithSchedules = await Promise.all(
+        doctorsList.map(async (doctor) => {
+          try {
+            // Fetch schedules for this doctor
+            const schedulesResponse = await fetch(
+              `/api/schedules/${doctor.id}`
+            );
+
+            if (!schedulesResponse.ok) {
+              console.warn(`No schedules found for doctor ID ${doctor.id}`);
+              return null; // Skip doctors with no schedules
+            }
+
+            const schedulesData = await schedulesResponse.json();
+
+            // Only include doctors with available schedules
+            if (schedulesData.data?.items?.length > 0) {
+              return {
+                id: doctor.id,
+                name: doctor.fullName,
+                // Assign a different image based on doctor ID
+                image: `/assets/images/doctor.jpg`,
+                schedules: schedulesData.data.items,
+              };
+            }
+            return null;
+          } catch (err) {
+            console.warn(
+              `Error fetching schedules for doctor ID ${doctor.id}:`,
+              err
+            );
+            return null;
+          }
+        })
+      );
+
+      // Filter out null values (doctors with no schedules or errors)
+      const validDoctors = doctorsWithSchedules.filter(
+        (doctor): doctor is DoctorData => doctor !== null
+      );
+
+      setDoctors(validDoctors);
+    } catch (err) {
+      console.error("Error fetching data:", err);
+      setError("Failed to load doctor schedules. Please try again later.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Initialize with first page
+  useEffect(() => {
+    fetchDoctorsForPage(currentPage);
+  }, [currentPage]);
+
+  // Handle page change
+  const handlePageChange = (
+    event: React.ChangeEvent<unknown>,
+    value: number
+  ) => {
+    setCurrentPage(value);
+    // Scroll to top when changing pages
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
 
   // Format time for display (e.g., "07:00:00" to "7:00")
   const formatTime = (time: string) => {
@@ -148,7 +177,7 @@ const Appointment = () => {
     return { timeSlots, details };
   };
 
-  if (loading) {
+  if (loading && doctors.length === 0) {
     return (
       <Container>
         <Box
@@ -195,18 +224,58 @@ const Appointment = () => {
           No doctor schedules available at the moment.
         </Typography>
       ) : (
-        doctors.map((doctor) => {
-          const { timeSlots, details } = getScheduleData(doctor.schedules);
-          return (
-            <DoctorCard
-              key={doctor.id}
-              name={doctor.name}
-              image={doctor.image}
-              schedule={timeSlots}
-              scheduleDetails={details}
-            />
-          );
-        })
+        <>
+          {/* Show loading overlay when fetching new page */}
+          {loading && (
+            <Box
+              position="fixed"
+              top={0}
+              left={0}
+              width="100%"
+              height="100%"
+              bgcolor="rgba(255,255,255,0.7)"
+              zIndex={999}
+              display="flex"
+              justifyContent="center"
+              alignItems="center"
+            >
+              <CircularProgress />
+            </Box>
+          )}
+
+          {/* Doctor cards */}
+          {doctors.map((doctor) => {
+            const { timeSlots, details } = getScheduleData(doctor.schedules);
+            return (
+              <DoctorCard
+                key={doctor.id}
+                name={doctor.name}
+                image={doctor.image}
+                schedule={timeSlots}
+                scheduleDetails={details}
+              />
+            );
+          })}
+
+          {/* Pagination controls */}
+          {totalPages > 1 && (
+            <Stack spacing={2} alignItems="center" sx={{ my: 4 }}>
+              <Pagination
+                count={totalPages}
+                page={currentPage}
+                onChange={handlePageChange}
+                color="primary"
+                size="large"
+                showFirstButton
+                showLastButton
+              />
+              <Typography color="text.secondary" variant="body2">
+                Page {currentPage} of {totalPages} • Showing doctors with
+                available schedules
+              </Typography>
+            </Stack>
+          )}
+        </>
       )}
     </Container>
   );

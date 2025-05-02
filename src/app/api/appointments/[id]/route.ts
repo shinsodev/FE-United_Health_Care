@@ -1,7 +1,6 @@
 // app/api/appointments/[id]/route.ts
-
-export async function PATCH(request: Request, { params }: { params: { id: string } }) {
-    const id = params.id;
+export async function PATCH(request: Request, { params }: any) {
+    const { id } = params;
     const url = new URL(request.url);
     const status = url.searchParams.get("status");
 
@@ -10,7 +9,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
     }
 
     try {
-        const res = await fetch(`https://appointment-service-e6za.onrender.com/appointments/${id}?status=${status}`, {
+        const res = await fetch(`https://appointment-service-e6za.onrender.com/api/v1/appointments/${id}?status=${status}`, {
             method: "PATCH",
             headers: {
                 "Content-Type": "application/json",

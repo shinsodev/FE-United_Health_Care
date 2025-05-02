@@ -2,10 +2,10 @@ import { NextResponse } from 'next/server';
 
 export async function GET(
     req: Request,
-    { params }: { params: { id: string } }
+    { params }: { params: any }
 ) {
-    const { id } = await params;
-    const apiUrl = `https://appointment-service-e6za.onrender.com/appointments/patient/${id}`;
+    const { id } = params;
+    const apiUrl = `https://appointment-service-e6za.onrender.com/api/v1/appointments/patient/${id}`;
 
     try {
         const res = await fetch(apiUrl, {

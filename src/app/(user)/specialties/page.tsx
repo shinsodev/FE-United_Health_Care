@@ -26,6 +26,9 @@ import { Specialty, SpecialtyFormData } from "@/types/backend";
 
 export default function SpecialtiesPage() {
   const [specialties, setSpecialties] = useState<Specialty[]>([]);
+  const [filteredSpecialties, setFilteredSpecialties] = useState<Specialty[]>(
+    []
+  );
   const [openModal, setOpenModal] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [formData, setFormData] = useState<SpecialtyFormData>({
@@ -38,23 +41,33 @@ export default function SpecialtiesPage() {
     severity: "success" as "success" | "error",
   });
   const [loading, setLoading] = useState(true);
+  const [searchText, setSearchText] = useState("");
+
+  const [currentPage, setCurrentPage] = useState(1); // default to page 1
+  const [totalPages, setTotalPages] = useState(0);
 
   const fetchSpecialties = async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/specialties", {
-        method: "GET",
-        headers: { "Content-Type": "application/json" },
-      });
+      const res = await fetch(
+        `https://appointment-service-e6za.onrender.com/api/v1/specialties?page=${currentPage}`,
+        {
+          method: "GET",
+          headers: { "Content-Type": "application/json" },
+        }
+      );
       if (!res.ok) {
         throw new Error("Cannot fetch specialties");
       }
       const data = await res.json();
-      const specialtiesData = Array.isArray(data) ? data : data.data || [];
+      const specialtiesData = data.data.items || [];
+
       if (!Array.isArray(specialtiesData)) {
         throw new Error("Data is not an array");
       }
       setSpecialties(specialtiesData);
+      setFilteredSpecialties(specialtiesData); // initial list
+      setTotalPages(data.data.totalPages);
     } catch (error) {
       console.error("Error:", error);
       setSnackbar({
@@ -63,14 +76,23 @@ export default function SpecialtiesPage() {
         severity: "error",
       });
       setSpecialties([]);
+      setFilteredSpecialties([]);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchSpecialties();
-  }, []);
+    fetchSpecialties(); // Only fetch specialties on initial mount or page change
+  }, [currentPage]); // Trigger effect when currentPage changes
+
+  const handleSearch = () => {
+    const lowercased = searchText.toLowerCase();
+    const filtered = specialties.filter((s) =>
+      s.name.toLowerCase().includes(lowercased)
+    );
+    setFilteredSpecialties(filtered);
+  };
 
   const handleOpenModal = (specialty?: Specialty) => {
     if (specialty) {
@@ -93,8 +115,8 @@ export default function SpecialtiesPage() {
     e.preventDefault();
     try {
       const url = editingId
-        ? `/api/specialties/${editingId}`
-        : "/api/specialties";
+        ? `https://appointment-service-e6za.onrender.com/api/v1/specialties/${editingId}`
+        : "https://appointment-service-e6za.onrender.com/api/v1/specialties";
       const method = editingId ? "PUT" : "POST";
       const res = await fetch(url, {
         method,
@@ -119,7 +141,7 @@ export default function SpecialtiesPage() {
         severity: "success",
       });
       handleCloseModal();
-      fetchSpecialties();
+      fetchSpecialties(); // Refresh data after submit
     } catch (error) {
       console.error(
         `Error when ${editingId ? "updating" : "creating"} specialty:`,
@@ -139,10 +161,13 @@ export default function SpecialtiesPage() {
   const handleDelete = async (id: number) => {
     if (window.confirm("Are you sure you want to delete this specialty?")) {
       try {
-        const res = await fetch(`/api/specialties/${id}`, {
-          method: "DELETE",
-          headers: { "Content-Type": "application/json" },
-        });
+        const res = await fetch(
+          `https://appointment-service-e6za.onrender.com/api/v1/specialties/${id}`,
+          {
+            method: "DELETE",
+            headers: { "Content-Type": "application/json" },
+          }
+        );
         if (!res.ok) {
           const errorData = await res.json().catch(() => ({}));
           throw new Error(errorData.error || "Cannot delete specialty");
@@ -154,7 +179,7 @@ export default function SpecialtiesPage() {
             responseData.message || "Specialty has been deleted successfully",
           severity: "success",
         });
-        fetchSpecialties();
+        fetchSpecialties(); // Refresh data after deletion
       } catch (error) {
         console.error("Error when deleting specialty:", error);
         setSnackbar({
@@ -203,6 +228,8 @@ export default function SpecialtiesPage() {
           <input
             type="text"
             placeholder="Search by name"
+            value={searchText}
+            onChange={(e) => setSearchText(e.target.value)}
             style={{
               border: "1px solid #ccc",
               borderRadius: 8,
@@ -210,7 +237,11 @@ export default function SpecialtiesPage() {
               outline: "none",
             }}
           />
-          <Button variant="contained" sx={{ background: "#a855f7" }}>
+          <Button
+            variant="contained"
+            sx={{ background: "#a855f7" }}
+            onClick={handleSearch}
+          >
             <FilterListIcon />
           </Button>
           <Button variant="outlined" onClick={() => handleOpenModal()}>
@@ -225,27 +256,25 @@ export default function SpecialtiesPage() {
             <TableCell>Code</TableCell>
             <TableCell>Name</TableCell>
             <TableCell>Created At</TableCell>
-            {/* <TableCell>Doctors</TableCell> */}
+            <TableCell>Doctors</TableCell>
             <TableCell>Actions</TableCell>
           </TableRow>
         </TableHead>
         <TableBody>
-          {specialties.map((specialty) => (
+          {filteredSpecialties.map((specialty) => (
             <TableRow key={specialty.id}>
               <TableCell>{specialty.code}</TableCell>
               <TableCell>{specialty.name}</TableCell>
               <TableCell>
                 {new Date(specialty.createdAt!).toLocaleDateString()}
               </TableCell>
-
-              {/* <TableCell>
+              <TableCell>
                 {specialty.doctors && specialty.doctors.length > 0
                   ? specialty.doctors
                       .map((doctor) => doctor.fullName)
                       .join(", ")
                   : "No doctors"}
-              </TableCell> */}
-
+              </TableCell>
               <TableCell>
                 <IconButton
                   onClick={() => handleOpenModal(specialty)}
@@ -274,20 +303,39 @@ export default function SpecialtiesPage() {
         }}
       >
         <Typography variant="body2">
-          Found {specialties.length} results. Displaying page 1/1
+          Displaying page {currentPage}/{totalPages}
         </Typography>
         <Box sx={{ display: "flex", gap: 1 }}>
-          <Button variant="outlined" size="small">
+          <Button
+            variant="outlined"
+            size="small"
+            onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+            disabled={currentPage === 1}
+          >
             Previous
           </Button>
+          {Array.from({ length: totalPages }, (_, index) => (
+            <Button
+              key={index}
+              variant={currentPage === index + 1 ? "contained" : "outlined"}
+              size="small"
+              sx={{
+                backgroundColor:
+                  currentPage === index + 1 ? "#a855f7" : "transparent",
+              }}
+              onClick={() => setCurrentPage(index + 1)}
+            >
+              {index + 1}
+            </Button>
+          ))}
           <Button
-            variant="contained"
+            variant="outlined"
             size="small"
-            sx={{ backgroundColor: "#a855f7" }}
+            onClick={() =>
+              setCurrentPage((prev) => Math.min(prev + 1, totalPages))
+            }
+            disabled={currentPage === totalPages}
           >
-            1
-          </Button>
-          <Button variant="outlined" size="small">
             Next
           </Button>
         </Box>
@@ -329,8 +377,8 @@ export default function SpecialtiesPage() {
               }
               sx={{ mb: 2 }}
             />
-            <Box sx={{ display: "flex", justifyContent: "flex-end" }}>
-              <Button variant="contained" type="submit">
+            <Box sx={{ textAlign: "right" }}>
+              <Button type="submit" variant="contained">
                 {editingId ? "Update" : "Create"}
               </Button>
             </Box>
@@ -341,10 +389,10 @@ export default function SpecialtiesPage() {
       <Snackbar
         open={snackbar.open}
         autoHideDuration={6000}
-        onClose={() => setSnackbar({ ...snackbar, open: false })}
+        onClose={() => setSnackbar((prev) => ({ ...prev, open: false }))}
       >
         <Alert
-          onClose={() => setSnackbar({ ...snackbar, open: false })}
+          onClose={() => setSnackbar((prev) => ({ ...prev, open: false }))}
           severity={snackbar.severity}
         >
           {snackbar.message}

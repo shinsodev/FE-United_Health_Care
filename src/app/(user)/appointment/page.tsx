@@ -249,6 +249,7 @@ const Appointment = () => {
             return (
               <DoctorCard
                 key={doctor.id}
+                id={doctor.id}
                 name={doctor.name}
                 image={doctor.image}
                 schedule={timeSlots}

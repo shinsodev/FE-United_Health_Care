@@ -28,20 +28,20 @@ type Appointment = {
     startHour: string | null;
     endHour: string | null;
 };
+
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://appointment-service-e6za.onrender.com';
 
-const AppointmentListByPatient = () => {
-    const { id } = useParams(); // get patient ID from URL
+const AppointmentListByDoctor = () => {
+    const { id } = useParams(); // get doctor ID from URL
     const [appointments, setAppointments] = useState<Appointment[]>([]);
     const [loading, setLoading] = useState(true);
-    // const [doctorNames, setDoctorNames] = useState<Record<number, string>>({});
 
 
     useEffect(() => {
         const fetchAppointments = async () => {
             try {
                 const response = await fetch(
-                    `/api/appointments/patient/${id}`, {
+                    `${API_BASE_URL}/api/v1/appointments/doctor/${id}`, {
                     method: "GET",
                     headers: {
                         "Accept": "*/*",
@@ -51,7 +51,7 @@ const AppointmentListByPatient = () => {
                 console.log(data);
                 setAppointments(data.data.items || []);
             } catch (error) {
-                console.error("Failed to fetch patient appointments:", error);
+                console.error("Failed to fetch doctor appointments:", error);
             } finally {
                 setLoading(false);
             }
@@ -67,34 +67,6 @@ const AppointmentListByPatient = () => {
             </Box>
         );
     }
-
-
-    // useEffect(() => {
-    //     const fetchDoctorNames = async () => {
-    //         const ids = [...new Set(appointments.map((appt) => appt.doctorId))]; // unique doctorIds
-
-    //         const results = await Promise.all(
-    //             ids.map(async (id) => {
-    //                 try {
-    //                     const res = await fetch(`https://appointment-service-e6za.onrender.com/api/v1/doctors/${id}`);
-    //                     const data = await res.json();
-    //                     return [id, data.data.fullName];
-    //                 } catch (err) {
-    //                     return [id, "Unknown"];
-    //                 }
-    //             })
-    //         );
-
-    //         const nameMap = Object.fromEntries(results);
-    //         setDoctorNames(nameMap);
-    //     };
-
-    //     if (appointments.length > 0) {
-    //         fetchDoctorNames();
-    //     }
-    // }, [appointments]);
-
-
 
     return (
         <Box sx={{ pl: 4 }}>
@@ -155,4 +127,4 @@ const AppointmentListByPatient = () => {
     );
 };
 
-export default AppointmentListByPatient;
+export default AppointmentListByDoctor;

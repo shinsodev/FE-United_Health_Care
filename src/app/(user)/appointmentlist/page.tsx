@@ -14,6 +14,9 @@ import {
     Paper,
     Chip,
     IconButton,
+    Button,
+    Stack,
+    Pagination,
 } from "@mui/material";
 import CheckIcon from "@mui/icons-material/Check";
 import CancelIcon from "@mui/icons-material/Cancel";
@@ -26,21 +29,40 @@ type Appointment = {
     doctorName: string;
     status: string;
     symptoms: string;
-    startHour: string | null;
-    endHour: string | null;
+    startHour: string;
+    endHour: string;
 };
 
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://appointment-service-e6za.onrender.com';
+
 const AppointmentList = () => {
+
+    const [totalPages, setTotalPages] = useState(1);
+    // const [totalDoctors, setTotalDoctors] = useState(0);
+    const [currentPage, setCurrentPage] = useState(1);
+    const pageSize = 10;
+
     const [appointments, setAppointments] = useState<Appointment[]>([]);
     const [loading, setLoading] = useState(true);
+
+    // Handle page change
+    const handlePageChange = (
+        event: React.ChangeEvent<unknown>,
+        value: number
+    ) => {
+        setCurrentPage(value);
+        // Scroll to top when changing pages
+        window.scrollTo({ top: 0, behavior: "smooth" });
+    };
 
     useEffect(() => {
         const fetchAppointments = async () => {
             try {
-                const res = await fetch("/api/appointments"); // use proxy to avoid CORS
+                const res = await fetch(`${API_BASE_URL}/api/v1/appointments?page=${currentPage}&size=10`); // use proxy to avoid CORS
                 const data = await res.json();
                 console.log(data);
                 setAppointments(data.data.items || []);
+                setTotalPages(data.data.totalPages);
             } catch (error) {
                 console.error("Failed to fetch appointments:", error);
             } finally {
@@ -49,7 +71,7 @@ const AppointmentList = () => {
         };
 
         fetchAppointments();
-    }, []);
+    }, [currentPage]);
 
     // Function to handle status update
     const updateStatus = async (id: number, status: string) => {
@@ -87,8 +109,14 @@ const AppointmentList = () => {
         );
     }
 
+    const formatTime = (time: string) => {
+        if (!time) return "—";
+        const [hours, minutes] = time.split(":");
+        return `${parseInt(hours)}:${minutes}`;
+    };
+
     return (
-        <Box sx={{ p: 4 }}>
+        <Box sx={{ pl: 4 }}>
             <Typography variant="h6" sx={{ p: 2, fontWeight: "bold", color: "#007bff" }}>
                 Appointment List
             </Typography>
@@ -105,23 +133,37 @@ const AppointmentList = () => {
                             <TableCell>Patient</TableCell>
                             <TableCell>Symptoms</TableCell>
                             <TableCell>Status</TableCell>
-                            <TableCell>Actions</TableCell>
+                            <TableCell>Accept/Decline</TableCell>
                         </TableRow>
                     </TableHead>
                     <TableBody>
                         {appointments.map((appt) => (
                             <TableRow key={appt.id}>
                                 <TableCell>{appt.id}</TableCell>
-                                <TableCell>{appt.appointmentDate || "N/A"}</TableCell>
+                                <TableCell>{appt.appointmentDate || "--"}</TableCell>
                                 <TableCell>
-                                    {appt.startHour && appt.endHour
-                                        ? `${appt.startHour} - ${appt.endHour}`
-                                        : "—"}
+                                    <Button
+                                        variant="outlined"
+                                        sx={{
+                                            textTransform: "none",
+                                            fontSize: "12px",
+                                            padding: "5px 10px",
+                                            transition: "all 0.3s",
+                                            "&:hover": {
+                                                backgroundColor: "#e3f2fd",
+                                                borderColor: "#1976d2",
+                                            },
+                                        }}
+                                    >
+                                        {formatTime(appt.startHour) && formatTime(appt.endHour)
+                                            ? `${formatTime(appt.startHour)} - ${formatTime(appt.endHour)}`
+                                            : "—"}
+                                    </Button>
                                 </TableCell>
-                                <TableCell>{appt.specialtyName || "N/A"}</TableCell>
-                                <TableCell>{appt.doctorName || "N/A"}</TableCell>
-                                <TableCell>{appt.patientName || "N/A"}</TableCell>
-                                <TableCell>{appt.symptoms || "N/A"}</TableCell>
+                                <TableCell>{appt.specialtyName || "--"}</TableCell>
+                                <TableCell>{appt.doctorName || "--"}</TableCell>
+                                <TableCell>{appt.patientName || "--"}</TableCell>
+                                <TableCell>{appt.symptoms || "--"}</TableCell>
                                 <TableCell>
                                     <Chip
                                         label={appt.status}
@@ -160,6 +202,24 @@ const AppointmentList = () => {
                     </TableBody>
                 </Table>
             </TableContainer>
+            {
+                totalPages > 1 && (
+                    <Stack spacing={2} alignItems="center" sx={{ my: 4 }}>
+                        <Pagination
+                            count={totalPages}
+                            page={currentPage}
+                            onChange={handlePageChange}
+                            color="primary"
+                            size="large"
+                            showFirstButton
+                            showLastButton
+                        />
+                        <Typography color="text.secondary" variant="body2">
+                            Page {currentPage} of {totalPages}
+                        </Typography>
+                    </Stack>
+                )
+            }
         </Box>
     );
 };

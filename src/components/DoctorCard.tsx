@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useRouter } from 'next/navigation';
 
 import {
   Box,
@@ -19,6 +20,7 @@ interface ScheduleInfo {
 }
 
 interface DoctorCardProps {
+  id: number;
   name: string;
   image: string;
   schedule: string[];
@@ -26,6 +28,7 @@ interface DoctorCardProps {
 }
 
 const DoctorCard = ({
+  id,
   name,
   image,
   schedule,
@@ -45,6 +48,17 @@ const DoctorCard = ({
   // Format period for display
   const formatPeriod = (period: string) => {
     return period.charAt(0) + period.slice(1).toLowerCase();
+  };
+
+  const [bookedDoctor, setBookedDoctor] = useState<number | null>(null);
+
+  const router = useRouter();
+
+  const handleBookDoctor = () => {
+    setBookedDoctor(id);
+    console.log(`bookedDoctor's ID: ${id}`);
+
+    router.push(`/appointment-book?doctorId=${id}`);
   };
 
   return (
@@ -168,6 +182,7 @@ const DoctorCard = ({
           }}
         >
           <Button
+            onClick={() => handleBookDoctor()}
             variant="contained"
             sx={{
               backgroundColor: "#159EEC",

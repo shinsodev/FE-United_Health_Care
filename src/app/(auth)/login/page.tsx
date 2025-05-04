@@ -121,7 +121,7 @@ const LoginPage = () => {
 
         <Button
           variant="contained"
-          sx={{ mt: 5, backgroundColor: "#16205b", padding: "12px 70px" }}
+          sx={{ mt: 5, backgroundColor: "#16205b", padding: "12px 70px", width: "40%" }}
           onClick={() => handleSubmit()}
         >
           Log In
@@ -132,7 +132,7 @@ const LoginPage = () => {
         <Button
           variant="outlined"
           startIcon={<GoogleIcon />}
-          sx={{ width: "60%", textTransform: "none", mb: 2 }}
+          sx={{ width: "40%", textTransform: "none", mb: 2 }}
           onClick={() => handleSignInWithGoogle()}
         >
           Log in with Google

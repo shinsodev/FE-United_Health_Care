@@ -1,4 +1,3 @@
-// ... tương tự như trên
 "use client";
 import React, { useEffect, useState } from "react";
 import {
@@ -14,6 +13,9 @@ const DoctorList = () => {
     const [email, setEmail] = useState("");
     const [name, setName] = useState("");
     const [password, setPassword] = useState("");
+    const [department, setDepartment] = useState("");
+    const [experienceYears, setExperienceYears] = useState<number>(0);
+    const [specialization, setSpecialization] = useState("");
     const [snackbar, setSnackbar] = useState({ open: false, message: "", severity: "success" });
     const { data: session } = useSession();
 
@@ -24,10 +26,9 @@ const DoctorList = () => {
         }
 
         try {
-            const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/users/all-doctors?page=0&size=5`, {
+            const res = await fetch('api/doctorlistadmin', {
                 headers: {
                     Authorization: `Bearer ${session.token}`,
-                    "Content-Type": "application/json",
                 },
             });
 
@@ -44,7 +45,6 @@ const DoctorList = () => {
             }
         } catch (err) {
             console.log("Error fetching doctors:", err);
-        } finally {
         }
     };
 
@@ -54,13 +54,20 @@ const DoctorList = () => {
 
     const handleCreateDoctor = async () => {
         try {
-            const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/users/create-doctor`, {
+            const res = await fetch('api/doctorlistadmin/create', {
                 method: "POST",
                 headers: {
                     Authorization: `Bearer ${session?.token}`,
                     "Content-Type": "application/json",
                 },
-                body: JSON.stringify({ email, password, name }),
+                body: JSON.stringify({
+                    email,
+                    password,
+                    name,
+                    department,
+                    experienceYears,
+                    specialization
+                }),
             });
 
             const result = await res.json();
@@ -69,6 +76,13 @@ const DoctorList = () => {
                 setSnackbar({ open: true, message: result.message, severity: "success" });
                 fetchDoctors(); // refresh list
                 setOpenModal(false);
+                // Reset form fields
+                setEmail("");
+                setName("");
+                setPassword("");
+                setDepartment("");
+                setExperienceYears(0);
+                setSpecialization("");
             } else {
                 setSnackbar({ open: true, message: result.message, severity: "error" });
             }
@@ -147,6 +161,16 @@ const DoctorList = () => {
                     <TextField fullWidth label="Email" value={email} onChange={(e) => setEmail(e.target.value)} margin="normal" />
                     <TextField fullWidth label="Name" value={name} onChange={(e) => setName(e.target.value)} margin="normal" />
                     <TextField fullWidth label="Password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} margin="normal" />
+                    <TextField fullWidth label="Department" value={department} onChange={(e) => setDepartment(e.target.value)} margin="normal" />
+                    <TextField
+                        fullWidth
+                        label="Experience Years"
+                        type="number"
+                        value={experienceYears}
+                        onChange={(e) => setExperienceYears(Number(e.target.value))}
+                        margin="normal"
+                    />
+                    <TextField fullWidth label="Specialization" value={specialization} onChange={(e) => setSpecialization(e.target.value)} margin="normal" />
                     <Button variant="contained" fullWidth sx={{ mt: 2 }} onClick={handleCreateDoctor}>
                         Submit
                     </Button>

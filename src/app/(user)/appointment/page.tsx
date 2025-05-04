@@ -1,15 +1,14 @@
 "use client";
-
+import DoctorCard from "@/components/DoctorCard";
 import {
-  Container,
-  Typography,
-  CircularProgress,
   Box,
+  CircularProgress,
+  Container,
   Pagination,
   Stack,
+  Typography,
 } from "@mui/material";
 import React, { useEffect, useState } from "react";
-import DoctorCard from "@/components/DoctorCard";
 import HomeIcon from "@mui/icons-material/Home";
 import KeyboardArrowRightIcon from "@mui/icons-material/KeyboardArrowRight";
 
@@ -35,6 +34,7 @@ interface DoctorData {
   name: string;
   image: string;
   schedules: DoctorSchedule[];
+  loading?: boolean;
 }
 
 interface DoctorsResponse {
@@ -49,6 +49,11 @@ interface DoctorsResponse {
   };
 }
 
+// Use the API_BASE_URL directly like in appointmentlist
+const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_BASE_URL ||
+  "https://appointment-service-e6za.onrender.com";
+
 const Appointment = () => {
   const [doctors, setDoctors] = useState<DoctorData[]>([]);
   const [loading, setLoading] = useState(true);
@@ -58,86 +63,98 @@ const Appointment = () => {
   const [totalDoctors, setTotalDoctors] = useState(0);
   const pageSize = 10;
 
-  // Fetch doctors for current page
-  const fetchDoctorsForPage = async (page: number) => {
-    setLoading(true);
-    try {
-      // Fetch doctors for the current page
-      const doctorsListResponse = await fetch(
-        `/api/doctors?page=${page}&size=${pageSize}`
-      );
+  // Load page data when currentPage changes
+  useEffect(() => {
+    const loadDoctorsAndSchedules = async () => {
+      setLoading(true);
+      try {
+        // Fetch doctors list directly from the API
+        const response = await fetch(
+          `${API_BASE_URL}/api/v1/doctors?page=${currentPage}&size=${pageSize}`
+        );
 
-      if (!doctorsListResponse.ok) {
-        throw new Error("Failed to fetch doctors list");
-      }
+        if (!response.ok) {
+          throw new Error("Failed to fetch doctors list");
+        }
 
-      const doctorsListData: DoctorsResponse = await doctorsListResponse.json();
+        const data = await response.json();
 
-      if (doctorsListData.status !== 200 || !doctorsListData.data?.items) {
-        throw new Error("Invalid doctors list data");
-      }
+        // Set pagination data
+        setTotalPages(data.data.totalPages);
+        setTotalDoctors(data.data.totalElements);
 
-      // Update pagination information
-      setTotalPages(doctorsListData.data.totalPages);
-      setTotalDoctors(doctorsListData.data.totalElements);
+        // Create initial doctor objects
+        const initialDoctors = data.data.items.map((doctor: DoctorInfo) => ({
+          id: doctor.id,
+          name: doctor.fullName,
+          image: `/assets/images/doctor.jpg`,
+          schedules: [],
+          loading: true,
+        }));
 
-      // Extract the list of doctors for this page
-      const doctorsList = doctorsListData.data.items;
+        // Set doctors immediately to show cards
+        setDoctors(initialDoctors);
+        setLoading(false);
 
-      // Fetch schedules for each doctor on this page
-      const doctorsWithSchedules = await Promise.all(
-        doctorsList.map(async (doctor) => {
+        // Fetch schedules for each doctor
+        const doctorsWithSchedules = [...initialDoctors];
+
+        for (let i = 0; i < data.data.items.length; i++) {
+          const doctorId = data.data.items[i].id;
           try {
-            // Fetch schedules for this doctor
+            // Fetch schedules directly from the API
             const schedulesResponse = await fetch(
-              `/api/schedules/${doctor.id}`
+              `${API_BASE_URL}/api/v1/doctor-schedules/doctor/${doctorId}`
             );
 
             if (!schedulesResponse.ok) {
-              console.warn(`No schedules found for doctor ID ${doctor.id}`);
-              return null; // Skip doctors with no schedules
+              doctorsWithSchedules[i] = {
+                ...doctorsWithSchedules[i],
+                loading: false,
+              };
+              continue;
             }
 
             const schedulesData = await schedulesResponse.json();
 
-            // Only include doctors with available schedules
-            if (schedulesData.data?.items?.length > 0) {
-              return {
-                id: doctor.id,
-                name: doctor.fullName,
-                // Assign a different image based on doctor ID
-                image: `/assets/images/doctor.jpg`,
-                schedules: schedulesData.data.items,
-              };
-            }
-            return null;
+            // Update this doctor's schedules
+            doctorsWithSchedules[i] = {
+              ...doctorsWithSchedules[i],
+              schedules: schedulesData.data?.items || [],
+              loading: false,
+            };
+
+            // Update the state with the latest information
+            setDoctors([...doctorsWithSchedules]);
           } catch (err) {
             console.warn(
-              `Error fetching schedules for doctor ID ${doctor.id}:`,
+              `Error fetching schedules for doctor ${doctorId}:`,
               err
             );
-            return null;
+            doctorsWithSchedules[i] = {
+              ...doctorsWithSchedules[i],
+              loading: false,
+            };
           }
-        })
-      );
+        }
 
-      // Filter out null values (doctors with no schedules or errors)
-      const validDoctors = doctorsWithSchedules.filter(
-        (doctor): doctor is DoctorData => doctor !== null
-      );
+        // Filter doctors to only show those with available schedules
+        setDoctors((prev) =>
+          prev.filter(
+            (doctor) =>
+              doctor.schedules.length > 0 &&
+              doctor.schedules.some((schedule) => schedule.available)
+          )
+        );
+      } catch (err) {
+        console.error("Error fetching data:", err);
+        setError("Failed to load doctor schedules. Please try again later.");
+      } finally {
+        setLoading(false);
+      }
+    };
 
-      setDoctors(validDoctors);
-    } catch (err) {
-      console.error("Error fetching data:", err);
-      setError("Failed to load doctor schedules. Please try again later.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Initialize with first page
-  useEffect(() => {
-    fetchDoctorsForPage(currentPage);
+    loadDoctorsAndSchedules();
   }, [currentPage]);
 
   // Handle page change
@@ -146,7 +163,6 @@ const Appointment = () => {
     value: number
   ) => {
     setCurrentPage(value);
-    // Scroll to top when changing pages
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
@@ -205,17 +221,9 @@ const Appointment = () => {
   return (
     <Container>
       <Typography
-        sx={{
-          display: "flex",
-          alignItems: "center",
-          color: "#1F2B6C",
-          fontSize: "18px",
-          fontWeight: "600",
-          marginBottom: "10px",
-        }}
+        variant="h6"
+        sx={{ p: 2, fontWeight: "bold", color: "#007bff" }}
       >
-        <HomeIcon />
-        <KeyboardArrowRightIcon />
         Appointment
       </Typography>
 
@@ -225,36 +233,35 @@ const Appointment = () => {
         </Typography>
       ) : (
         <>
-          {/* Show loading overlay when fetching new page */}
-          {loading && (
-            <Box
-              position="fixed"
-              top={0}
-              left={0}
-              width="100%"
-              height="100%"
-              bgcolor="rgba(255,255,255,0.7)"
-              zIndex={999}
-              display="flex"
-              justifyContent="center"
-              alignItems="center"
-            >
-              <CircularProgress />
-            </Box>
-          )}
-
           {/* Doctor cards */}
           {doctors.map((doctor) => {
             const { timeSlots, details } = getScheduleData(doctor.schedules);
             return (
-              <DoctorCard
-                key={doctor.id}
-                id={doctor.id}
-                name={doctor.name}
-                image={doctor.image}
-                schedule={timeSlots}
-                scheduleDetails={details}
-              />
+              <Box key={doctor.id} position="relative">
+                {doctor.loading && (
+                  <Box
+                    position="absolute"
+                    top={0}
+                    left={0}
+                    width="100%"
+                    height="100%"
+                    bgcolor="rgba(255,255,255,0.7)"
+                    zIndex={2}
+                    display="flex"
+                    justifyContent="center"
+                    alignItems="center"
+                  >
+                    <CircularProgress size={30} />
+                  </Box>
+                )}
+                <DoctorCard
+                  id={doctor.id}
+                  name={doctor.name}
+                  image={doctor.image}
+                  schedule={timeSlots}
+                  scheduleDetails={details}
+                />
+              </Box>
             );
           })}
 

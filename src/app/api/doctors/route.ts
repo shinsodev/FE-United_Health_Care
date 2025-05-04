@@ -5,9 +5,12 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const page = searchParams.get("page") || "1";
   const size = searchParams.get("size") || "10";
+  const API_BASE_URL =
+    process.env.NEXT_PUBLIC_API_BASE_URL ||
+    "https://appointment-service-e6za.onrender.com";
 
   try {
-    const apiUrl = `https://appointment-service-e6za.onrender.com/api/v1/doctors?page=${page}&size=${size}`;
+    const apiUrl = `${API_BASE_URL}/api/v1/doctors?page=${page}&size=${size}`;
 
     const res = await fetch(apiUrl, {
       method: "GET",

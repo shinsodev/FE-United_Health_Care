@@ -18,6 +18,7 @@ import { useParams } from "next/navigation";
 
 type Appointment = {
     id: number;
+    examinationType: string;
     appointmentDate: string;
     specialtyName: string;
     patientName: string;
@@ -59,6 +60,29 @@ const AppointmentListByPatient = () => {
 
         fetchAppointments();
     }, [id]);
+
+    const [doctorMap, setDoctorMap] = useState<Record<number, string>>({});
+
+    useEffect(() => {
+        const fetchDoctorNames = async () => {
+            const uniqueDoctorIds = Array.from(new Set(appointments.map(a => a.doctorId)));
+            const doctorMapTemp: Record<number, string> = {};
+
+            await Promise.all(uniqueDoctorIds.map(async (id) => {
+                try {
+                    const res = await fetch(`${API_BASE_URL}/api/v1/doctors/${id}`);
+                    const data = await res.json();
+                    doctorMapTemp[id] = data.data.fullName;
+                } catch {
+                    doctorMapTemp[id] = "Undefined";
+                }
+            }));
+
+            setDoctorMap(doctorMapTemp);
+        };
+
+        if (appointments.length) fetchDoctorNames();
+    }, [appointments]);
 
     if (loading) {
         return (
@@ -106,19 +130,25 @@ const AppointmentListByPatient = () => {
                 <Table>
                     <TableHead sx={{ backgroundColor: "#f5f5f5" }}>
                         <TableRow>
-                            <TableCell>ID</TableCell>
+                            {/* <TableCell>ID</TableCell> */}
+                            {/* <TableCell>Regular/VIP</TableCell> */}
                             <TableCell>Date</TableCell>
                             <TableCell>Time</TableCell>
                             {/* <TableCell>Specialty</TableCell> */}
-                            {/* <TableCell>Doctor</TableCell> */}
+                            <TableCell>Doctor</TableCell>
                             <TableCell>Symptoms</TableCell>
                             <TableCell>Status</TableCell>
                         </TableRow>
                     </TableHead>
                     <TableBody>
                         {appointments.map((appt) => (
-                            <TableRow key={appt.id}>
-                                <TableCell>{appt.id}</TableCell>
+                            <TableRow key={appt.id}
+                                sx={{
+                                    backgroundColor: appt.examinationType === "VIP" ? "#C6E2FF" : "inherit", // màu vàng nhạt
+                                }}
+                            >
+                                {/* <TableCell>{appt.id}</TableCell> */}
+                                {/* <TableCell>{appt.examinationType || "N/A"}</TableCell> */}
                                 <TableCell>{appt.appointmentDate || "N/A"}</TableCell>
                                 <TableCell>
                                     {appt.startHour && appt.endHour
@@ -127,7 +157,7 @@ const AppointmentListByPatient = () => {
                                 </TableCell>
                                 {/* <TableCell>{appt.specialtyName || "N/A"}</TableCell> */}
                                 {/* <TableCell>{appt.doctorName || "N/A"}</TableCell> */}
-                                {/* <TableCell>{doctorNames[appt.doctorId] || "..."}</TableCell> */}
+                                <TableCell>{doctorMap[appt.doctorId] || "..."}</TableCell>
                                 <TableCell>{appt.symptoms || "N/A"}</TableCell>
                                 <TableCell>
                                     <Chip

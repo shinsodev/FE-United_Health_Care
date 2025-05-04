@@ -18,6 +18,7 @@ import { useParams } from "next/navigation";
 
 type Appointment = {
     id: number;
+    examinationType: string;
     appointmentDate: string;
     specialtyName: string;
     patientName: string;
@@ -78,7 +79,8 @@ const AppointmentListByDoctor = () => {
                 <Table>
                     <TableHead sx={{ backgroundColor: "#f5f5f5" }}>
                         <TableRow>
-                            <TableCell>ID</TableCell>
+                            {/* <TableCell>ID</TableCell> */}
+                            {/* <TableCell>Regular/VIP</TableCell> */}
                             <TableCell>Date</TableCell>
                             <TableCell>Time</TableCell>
                             {/* <TableCell>Specialty</TableCell> */}
@@ -89,8 +91,13 @@ const AppointmentListByDoctor = () => {
                     </TableHead>
                     <TableBody>
                         {appointments.map((appt) => (
-                            <TableRow key={appt.id}>
-                                <TableCell>{appt.id}</TableCell>
+                            <TableRow key={appt.id}
+                                sx={{
+                                    backgroundColor: appt.examinationType === "VIP" ? "#C6E2FF" : "inherit", // màu vàng nhạt
+                                }}
+                            >
+                                {/* <TableCell>{appt.id}</TableCell> */}
+                                {/* <TableCell>{appt.examinationType || "N/A"}</TableCell> */}
                                 <TableCell>{appt.appointmentDate || "N/A"}</TableCell>
                                 <TableCell>
                                     {appt.startHour && appt.endHour

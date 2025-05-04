@@ -23,10 +23,11 @@ import CancelIcon from "@mui/icons-material/Cancel";
 
 type Appointment = {
     id: number;
+    examinationType: string;
     appointmentDate: string;
     specialtyName: string;
     patientName: string;
-    doctorName: string;
+    doctorId: number;
     status: string;
     symptoms: string;
     startHour: string;
@@ -72,6 +73,29 @@ const AppointmentList = () => {
 
         fetchAppointments();
     }, [currentPage]);
+
+    const [doctorMap, setDoctorMap] = useState<Record<number, string>>({});
+
+    useEffect(() => {
+        const fetchDoctorNames = async () => {
+            const uniqueDoctorIds = Array.from(new Set(appointments.map(a => a.doctorId)));
+            const doctorMapTemp: Record<number, string> = {};
+
+            await Promise.all(uniqueDoctorIds.map(async (id) => {
+                try {
+                    const res = await fetch(`${API_BASE_URL}/api/v1/doctors/${id}`);
+                    const data = await res.json();
+                    doctorMapTemp[id] = data.data.fullName;
+                } catch {
+                    doctorMapTemp[id] = "Không xác định";
+                }
+            }));
+
+            setDoctorMap(doctorMapTemp);
+        };
+
+        if (appointments.length) fetchDoctorNames();
+    }, [appointments]);
 
     // Function to handle status update
     const updateStatus = async (id: number, status: string) => {
@@ -125,12 +149,13 @@ const AppointmentList = () => {
                 <Table>
                     <TableHead sx={{ backgroundColor: "#f5f5f5" }}>
                         <TableRow>
-                            <TableCell>ID</TableCell>
+                            {/* <TableCell>ID</TableCell> */}
+                            {/* <TableCell>Regular/VIP</TableCell> */}
                             <TableCell>Date</TableCell>
                             <TableCell>Time</TableCell>
-                            <TableCell>Specialty</TableCell>
+                            {/* <TableCell>Specialty</TableCell> */}
                             <TableCell>Doctor</TableCell>
-                            <TableCell>Patient</TableCell>
+                            {/* <TableCell>Patient</TableCell> */}
                             <TableCell>Symptoms</TableCell>
                             <TableCell>Status</TableCell>
                             <TableCell>Accept/Decline</TableCell>
@@ -138,8 +163,13 @@ const AppointmentList = () => {
                     </TableHead>
                     <TableBody>
                         {appointments.map((appt) => (
-                            <TableRow key={appt.id}>
-                                <TableCell>{appt.id}</TableCell>
+                            <TableRow key={appt.id}
+                                sx={{
+                                    backgroundColor: appt.examinationType === "VIP" ? "#C6E2FF" : "inherit", // màu vàng nhạt
+                                }}
+                            >
+                                {/* <TableCell>{appt.id}</TableCell> */}
+                                {/* <TableCell>{appt.examinationType || "N/A"}</TableCell> */}
                                 <TableCell>{appt.appointmentDate || "--"}</TableCell>
                                 <TableCell>
                                     <Button
@@ -160,9 +190,10 @@ const AppointmentList = () => {
                                             : "—"}
                                     </Button>
                                 </TableCell>
-                                <TableCell>{appt.specialtyName || "--"}</TableCell>
-                                <TableCell>{appt.doctorName || "--"}</TableCell>
-                                <TableCell>{appt.patientName || "--"}</TableCell>
+                                {/* <TableCell>{appt.specialtyName || "--"}</TableCell> */}
+                                {/* <TableCell>{appt.doctorName || "--"}</TableCell> */}
+                                <TableCell>{doctorMap[appt.doctorId] || "..."}</TableCell>
+                                {/* <TableCell>{appt.patientName || "--"}</TableCell> */}
                                 <TableCell>{appt.symptoms || "--"}</TableCell>
                                 <TableCell>
                                     <Chip

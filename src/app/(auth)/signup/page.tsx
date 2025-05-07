@@ -2,14 +2,14 @@
 
 import { Box, Button, Checkbox, Grid, TextField, Typography, Link, FormControlLabel, CircularProgress, Alert, Divider } from "@mui/material";
 import NextLink from "next/link";
-import { redirect } from "next/navigation";
+import { redirect, useRouter } from "next/navigation"; // Import useRouter
 import { useState } from "react";
 import GoogleIcon from '@mui/icons-material/Google';
 import { sendRequest } from "@/utils/api";
 import { JWT } from "next-auth/jwt";
 
-
 const SignUpPage = () => {
+  const router = useRouter(); // Initialize useRouter for client-side navigation
   const [formData, setFormData] = useState({
     email: "",
     password: "",
@@ -81,15 +81,17 @@ const SignUpPage = () => {
           assurance: "",
         });
         setAcceptTerms(false);
-
+        redirect("/login"); // Redirect to login on success
       } else {
+        // Handle specific error like USER_EXISTED
         setError(data.message || "Registration failed");
+        setLoading(false);
+        router.push("/signup"); // Redirect back to signup on error
       }
     } catch (err) {
       setError("An error occurred. Please try again.");
-    } finally {
       setLoading(false);
-      redirect("/login");
+      router.push("/signup"); // Redirect back to signup on error
     }
   };
 
@@ -97,17 +99,19 @@ const SignUpPage = () => {
     try {
       const res = await sendRequest<JWT>({
         url: "/api/register-google",
-        method: "GET"
-      })
+        method: "GET",
+      });
+      console.log("check")
       if (res && res.data) {
-        window.location.href = res.data;
+        console.log("check check")
+        window.location.href = res.data; // Redirect to Google auth
       } else {
-        setError(res.message)
+        setError(res.message || "Google registration failed");
+        router.push("/signup"); // Redirect back to signup on error
       }
     } catch (err) {
       setError("An error occurred. Please try again.");
-    } finally {
-      redirect("/login");
+      router.push("/signup"); // Redirect back to signup on error
     }
   };
 

@@ -27,9 +27,7 @@ const RecentPatient = ({ patients }: RecentPatientProps) => {
       <Typography variant="h6" sx={{ fontWeight: "bold", marginBottom: "5px" }}>
         Recent patients
       </Typography>
-      <Typography variant="body2" sx={{ color: "#6c757d", marginBottom: "20px" }}>
-        Lorem ipsum dolor sit amet, consectetur adipiscing elit.
-      </Typography>
+
 
       <TableContainer component={Paper}>
         <Table>

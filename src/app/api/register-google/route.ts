@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
 
-// GET: Fetch all specialties
 export async function GET(req: Request) {
     try {
         const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL_USER}/auth/register-google`, {

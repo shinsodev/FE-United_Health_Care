@@ -16,6 +16,7 @@ export const sendRequest = async <T>(props: IRequest) => {
         method: method,
         headers: new Headers({ 'content-type': 'application/json', ...headers }),
         body: body ? JSON.stringify(body) : null,
+        redirect: "manual",
         ...nextOption
     };
     if (useCredentials) options.credentials = "include";

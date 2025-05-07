@@ -19,7 +19,7 @@ const PatientList = () => {
       }
 
       try {
-        const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/users/all-patients?page=0&size=5`, {
+        const res = await fetch('api/patientlist', {
           headers: {
             Authorization: `Bearer ${session?.token}`,
             "Content-Type": "application/json",
